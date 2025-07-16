@@ -54,6 +54,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Файл %v успешно скачан", url)
 
 	list, err := os.Open(filename)
 	if err != nil {
@@ -66,7 +67,7 @@ func main() {
 		}
 	}()
 
-	date := time.Now().Format("01_02_2006")
+	date := time.Now().Format("02_01_2006")
 	scanner := bufio.NewScanner(list)
 
 	run, err := os.Create(fmt.Sprintf("%v_%v_running.out", server, date))
@@ -118,6 +119,7 @@ func main() {
 			failCount++
 		}
 	}
+	log.Printf("Файлы %v, %v успешно созданы", run.Name(), fail.Name())
 
 	report, err := os.Create(fmt.Sprintf("%v_%v_report.out", server, date))
 	if err != nil {
@@ -130,7 +132,7 @@ func main() {
 		}
 	}()
 
-	err = os.Chmod(report.Name(), 0444)
+	err = os.Chmod(report.Name(), 0744)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -139,17 +141,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rep_date := time.Now().Format("01/02/2006")
+	rep_date := time.Now().Format("02/01/2006")
 	text := fmt.Sprintf("Количество работающих сервисов: %d\nКоличество сервисов с ошибками: %d\nИмя системного пользователя: %s\nДата: %v",
 		runCount, failCount, user.Username, rep_date)
 	_, err = io.WriteString(report, text)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Файл %v успешно создан", report.Name())
 
 	err = os.Mkdir("archive", os.ModePerm)
 	if err != nil {
-		log.Fatal(err)
+		if err.Error() != "mkdir archive: file exists" {
+			log.Fatal(err)
+		}
 	}
 
 	archPath := fmt.Sprintf("./archive/%s_%v.tar.gz", server, date)
@@ -204,15 +209,16 @@ func main() {
 
 	tr := tar.NewReader(arch)
 	for {
-		_, err = tr.Next()
+		_, err := tr.Next()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			log.Fatal(err)
 		}
 	}
+	log.Printf("Архив %v успешно создан", arch.Name())
 
-	fmt.Println("Задача успешно завершена")
+	log.Println("Задача успешно завершена")
 }
 
 func archive(tw *tar.Writer, filename string) error {
