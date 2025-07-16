@@ -29,7 +29,12 @@ func main() {
 		log.Fatal(err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	urlsplit := strings.Split(url, "/")
 	filename := urlsplit[len(urlsplit)-1]
@@ -38,18 +43,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	file.Close()
-
 	list, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		err = list.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	date := time.Now().Format("01_02_2006")
 	scanner := bufio.NewScanner(list)
@@ -58,13 +73,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer run.Close()
+	defer func() {
+		err = run.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	fail, err := os.Create(fmt.Sprintf("%v_%v_failed.out", server, date))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer fail.Close()
+	defer func() {
+		err = fail.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	runCount, failCount := 0, 0
 
@@ -80,10 +105,16 @@ func main() {
 
 		switch words[2] {
 		case "Running":
-			io.WriteString(run, name+"\n")
+			_, err = io.WriteString(run, name+"\n")
+			if err != nil {
+				log.Fatal(err)
+			}
 			runCount++
 		case "Error", "CrashLoopBackOff":
-			io.WriteString(fail, name+"\n")
+			_, err = io.WriteString(fail, name+"\n")
+			if err != nil {
+				log.Fatal(err)
+			}
 			failCount++
 		}
 	}
@@ -92,26 +123,54 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer report.Close()
-	os.Chmod(report.Name(), 0444)
+	defer func() {
+		err = report.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	err = os.Chmod(report.Name(), 0444)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	user, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
 	rep_date := time.Now().Format("01/02/2006")
 	text := fmt.Sprintf("Количество работающих сервисов: %d\nКоличество сервисов с ошибками: %d\nИмя системного пользователя: %s\nДата: %v",
 		runCount, failCount, user.Username, rep_date)
-	io.WriteString(report, text)
+	_, err = io.WriteString(report, text)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	os.Mkdir("archive", os.ModePerm)
+	err = os.Mkdir("archive", os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	archPath := fmt.Sprintf("./archive/%s_%v.tar.gz", server, date)
 	arch, err := os.Create(archPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer arch.Close()
+	defer func() {
+		err = arch.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	tw := tar.NewWriter(arch)
-	defer tw.Close()
+	defer func() {
+		err = tw.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	err = archive(tw, run.Name())
 	if err != nil {
@@ -126,10 +185,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	os.Remove(run.Name())
-	os.Remove(fail.Name())
-	os.Remove(report.Name())
-	os.Remove(filename)
+	err = os.Remove(run.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Remove(fail.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Remove(report.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Remove(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	tr := tar.NewReader(arch)
 	for {
