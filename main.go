@@ -177,15 +177,7 @@ func main() {
 		}
 	}()
 
-	err = archive(tw, run.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = archive(tw, fail.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = archive(tw, report.Name())
+	err = archive(tw, run.Name(), fail.Name(), report.Name())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -221,32 +213,34 @@ func main() {
 	log.Println("Задача успешно завершена")
 }
 
-func archive(tw *tar.Writer, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
+func archive(tw *tar.Writer, files ...string) error {
+	for _, filename := range files {
+		file, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
 
-	info, err := file.Stat()
-	if err != nil {
-		return err
-	}
+		info, err := file.Stat()
+		if err != nil {
+			return err
+		}
 
-	header, err := tar.FileInfoHeader(info, info.Name())
-	if err != nil {
-		return err
-	}
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return err
+		}
 
-	header.Name = filename
+		header.Name = filename
 
-	err = tw.WriteHeader(header)
-	if err != nil {
-		return err
-	}
+		err = tw.WriteHeader(header)
+		if err != nil {
+			return err
+		}
 
-	_, err = io.Copy(tw, file)
-	if err != nil {
-		return err
+		_, err = io.Copy(tw, file)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
